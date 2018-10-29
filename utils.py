@@ -50,10 +50,12 @@ def read_label(path, is_training=True):
     label[seg == 2, 1] = 1
     label[seg == 4, 2] = 1
     
+    print('label shape: '.format(label.shape))
     final_label = np.empty((16, 16, 16, 3), dtype=np.float32)
     for z in range(label.shape[3]):
         final_label[..., z] = resize(label[..., z], (16, 16, 16), mode='constant')
         
+    print('final label shape: '.format(final_label.shape))
     # Augmentation
     if is_training:
         im_size = final_label.shape[:-1]
@@ -70,6 +72,7 @@ def read_label(path, is_training=True):
         for z in range(label.shape[3]):
             final_label[..., z] = warp(final_label[..., z], warp_coords)
 
+    print('final aug label shape: '.format(final_label.shape))
     return final_label
 
 def read_seg(path):
@@ -85,13 +88,17 @@ def read_image(path, is_training=True):
     if is_training:
         seg = nib.load(glob.glob(os.path.join(path, '*_seg.nii.gz'))[0]).get_data().astype(np.float32)
         assert t1.shape == seg.shape
+        print('unique labels')
+        print(len(np.unique(seg)))
+        seg = np.rint(seg) #mnc labels are not exactly integers... 
+        print(len(np.unique(seg)))
         nchannel = 2
     else:
         nchannel = 1
         
     image = np.empty((t1.shape[0], t1.shape[1], t1.shape[2], nchannel), dtype=np.float32)
     
-    #image[..., 0] = remove_low_high(t1)
+    image[..., 0] = remove_low_high(t1)
     #image[..., 1] = remove_low_high(t1ce)
     #image[..., 2] = remove_low_high(t2)
     #image[..., 3] = remove_low_high(flair)
@@ -105,14 +112,14 @@ def read_image(path, is_training=True):
     
     return image
 
-def read_patch(path):
+def read_patch(path,nclass):
     image = np.load(path + '.npy')
     seg = image[..., -1]
-    label = np.zeros((image.shape[0], image.shape[1], image.shape[2], 4), dtype=np.float32)
+    label = np.zeros((image.shape[0], image.shape[1], image.shape[2], nclass), dtype=np.float32)
     label[seg == 0, 0] = 1
     label[seg == 1, 1] = 1
-    label[seg == 2, 2] = 1
-    label[seg == 4, 3] = 1
+    # label[seg == 2, 2] = 1
+    # label[seg == 4, 3] = 1
     return image[..., :-1], label
     
 def generate_patch_locations(patches, patch_size, im_size):
