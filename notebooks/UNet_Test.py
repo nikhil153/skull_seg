@@ -50,7 +50,6 @@ subject_dirs = next(os.walk(FLAGS.train_data_dir))[1]
 for d in subject_dirs: 
     all_train_paths.append(os.path.join(FLAGS.train_data_dir,d))
 
-train_patch_dir = '/Users/nikhil/code/git_repos/skull_seg/test_output/'
 training_paths = [os.path.join(FLAGS.train_patch_dir, name) for name in os.listdir(FLAGS.train_patch_dir)
                   if '.DS' not in name]
 testing_paths = None
