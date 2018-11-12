@@ -7,6 +7,7 @@ import pickle
 from utils import *
 
 def conv3d(input_, output_dim, f_size, is_training, scope='conv3d'):
+    print(scope)
     with tf.variable_scope(scope) as scope:
         # VGG network uses two 3*3 conv layers to effectively increase receptive field
         w1 = tf.get_variable('w1', [f_size, f_size, f_size, input_.get_shape()[-1], output_dim],
@@ -14,24 +15,26 @@ def conv3d(input_, output_dim, f_size, is_training, scope='conv3d'):
         conv1 = tf.nn.conv3d(input_, w1, strides=[1, 1, 1, 1, 1], padding='SAME')
         b1 = tf.get_variable('b1', [output_dim], initializer=tf.constant_initializer(0.0))
         conv1 = tf.nn.bias_add(conv1, b1)
-        bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
-                                           variables_collections=['bn_collections'])
+        # bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
+        #                                   variables_collections=['bn_collections'])
         # bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
         #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        r1 = tf.nn.relu(bn1)
+        r1 = tf.nn.relu(conv1)
         
-        w2 = tf.get_variable('w2', [f_size, f_size, f_size, output_dim, output_dim],
-                             initializer=tf.truncated_normal_initializer(stddev=0.1))
-        conv2 = tf.nn.conv3d(r1, w2, strides=[1, 1, 1, 1, 1], padding='SAME')
-        b2 = tf.get_variable('b2', [output_dim], initializer=tf.constant_initializer(0.0))
-        conv2 = tf.nn.bias_add(conv2, b2)
-        bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
-                                           variables_collections=['bn_collections'])
-                                        
+        ## Comment starts here -------
+        # w2 = tf.get_variable('w2', [f_size, f_size, f_size, output_dim, output_dim],
+        #                      initializer=tf.truncated_normal_initializer(stddev=0.1))
+        # conv2 = tf.nn.conv3d(r1, w2, strides=[1, 1, 1, 1, 1], padding='SAME')
+        # b2 = tf.get_variable('b2', [output_dim], initializer=tf.constant_initializer(0.0))
+        # conv2 = tf.nn.bias_add(conv2, b2)
         # bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
-        #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        r2 = tf.nn.relu(bn2)
-        return r2
+        #                                    variables_collections=['bn_collections'])
+                                        
+        # # bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
+        # #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
+        # r2 = tf.nn.relu(bn2)
+        ## Comment ends here -------
+        return r1
     
 def deconv3d(input_, output_shape, f_size, is_training, scope='deconv3d'):
     with tf.variable_scope(scope) as scope:
@@ -39,11 +42,11 @@ def deconv3d(input_, output_shape, f_size, is_training, scope='deconv3d'):
         w = tf.get_variable('w', [f_size, f_size, f_size, output_dim, input_.get_shape()[-1]],
                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         deconv = tf.nn.conv3d_transpose(input_, w, output_shape, strides=[1, f_size, f_size, f_size, 1], padding='SAME')
-        bn = tf.contrib.layers.batch_norm(deconv, is_training=is_training, scope='bn', decay=0.9,
-                                          variables_collections=['bn_collections'])
+        # bn = tf.contrib.layers.batch_norm(deconv, is_training=is_training, scope='bn', decay=0.9,
+        #                                  variables_collections=['bn_collections'])
         # bn = tf.contrib.layers.batch_norm(deconv, is_training=is_training, scope='bn', decay=0.9,
         #                                   zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        r = tf.nn.relu(bn)
+        r = tf.nn.relu(deconv)
         return r
     
 def crop_and_concat(x1, x2):
@@ -52,7 +55,7 @@ def crop_and_concat(x1, x2):
     offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, (x1_shape[3] - x2_shape[3]) // 2, 0]
     size = [-1, x2_shape[1], x2_shape[2], x2_shape[3], -1]
     x1_crop = tf.slice(x1, offsets, size)
-    return tf.concat(4, [x1_crop, x2]) #tf.concat([x1_crop, x2], 4) # order depends on TF version
+    return tf.concat([x1_crop, x2], 4) #tf.concat(4, [x1_crop, x2]) #tf.concat([x1_crop, x2], 4) # order depends on TF version
 
 def conv_relu(input_, output_dim, f_size, s_size, scope='conv_relu'):
     with tf.variable_scope(scope) as scope:
@@ -96,6 +99,10 @@ class UNet3D(object):
         self.saver = tf.train.Saver(tf.trainable_variables() + tf.get_collection_ref('bn_collections'))
         
     def build_model(self):
+        # TODO
+        # add batch norm
+        # net = slim.fully_connected(X, net_arch['l{}'.format(l+1)],normalizer_fn=slim.batch_norm,scope='fc{}'.format(l))
+        
         self.images = tf.placeholder(tf.float32, shape=[None, self.patch_size[0], self.patch_size[1], self.patch_size[2],
                                                         self.channel], name='images')
         self.labels = tf.placeholder(tf.float32, shape=[None, self.patch_size[0], self.patch_size[1], self.patch_size[2],
@@ -111,6 +118,7 @@ class UNet3D(object):
         pool_kernel_size = 3 # Use a larger kernel
         
         # Encoding path
+        print('encoding...')
         connection_outputs = []
         for layer in range(layers):
             features = 2**layer * self.features_root
@@ -128,7 +136,9 @@ class UNet3D(object):
         bottom = conv3d(pool, 2**layers * self.features_root, conv_size, is_training=self.is_training, scope='bottom')
         bottom = tf.nn.dropout(bottom, self.keep_prob)
 
+        
         # Decoding path
+        print('decoding...')
         for layer in range(layers):
             conterpart_layer = layers - 1 - layer
             features = 2**conterpart_layer * self.features_root
@@ -143,26 +153,32 @@ class UNet3D(object):
                                    shape[3] * deconv_size, features]
             
             deconv = deconv3d(prev, deconv_output_shape, deconv_size, is_training=self.is_training,
-                              scope='decoding' + str(conterpart_layer))
+                              scope='decoding_dconv' + str(conterpart_layer))
            
-            cc = crop_and_concat(connection_outputs[conterpart_layer], deconv)
-            conv_decoding = conv3d(cc, features, conv_size, is_training=self.is_training,
-                                   scope='decoding' + str(conterpart_layer))
-            
+            # cc = crop_and_concat(connection_outputs[conterpart_layer], deconv)
+            # conv_decoding = conv3d(cc, features, conv_size, is_training=self.is_training,
+            #                        scope='decoding' + str(conterpart_layer))
+            conv_decoding = conv3d(deconv, features, conv_size, is_training=self.is_training,
+                                   scope='decoding_conv' + str(conterpart_layer))
+
+        # print('conv_decoding shape: {}'.format(conv_decoding.get_shape()))    
         with tf.variable_scope('logits') as scope:
             w = tf.get_variable('w', [1, 1, 1, conv_decoding.get_shape()[-1], self.nclass],
                                 initializer=tf.truncated_normal_initializer(stddev=0.1))
+            
             logits = tf.nn.conv3d(conv_decoding, w, strides=[1, 1, 1, 1, 1], padding='SAME')
             b = tf.get_variable('b', [self.nclass], initializer=tf.constant_initializer(0.0))
             logits = tf.nn.bias_add(logits, b)
         
+        # print('logits shape: {}'.format(logits.get_shape()))    
+        # print('labels shape: {}'.format(self.labels.get_shape()))    
         self.probs = tf.nn.softmax(logits)
         self.predictions = tf.argmax(self.probs, 4) # not sure why this is 4
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.predictions, tf.argmax(self.labels, 4)), tf.float32)) # not sure why this is 4
                                   
         flat_logits = tf.reshape(logits, [-1, self.nclass])
         flat_labels = tf.reshape(self.labels, [-1, self.nclass])
-        
+
         if self.class_weights is not None:
             class_weights = tf.constant(np.asarray(self.class_weights, dtype=np.float32))
             weight_map = tf.reduce_max(tf.multiply(flat_labels, class_weights), axis=1)
@@ -170,11 +186,13 @@ class UNet3D(object):
             weighted_loss = tf.multiply(loss_map, weight_map)
             cross_entropy_loss = tf.reduce_mean(weighted_loss)
         else:
-            cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits,
-                                                                                        labels=flat_labels))
+            cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits,labels=flat_labels))
+
+            #cross_entropy_loss = tf.reduce_mean(flat_logits)
+
         eps = 1e-5
-        dice_value = 0
         dice_loss = 0
+        dice_value = 0
         for i in range(1, self.nclass):
             slice_prob = tf.squeeze(tf.slice(self.probs, [0, 0, 0, 0, i], [-1, -1, -1, -1, 1]), axis=4)
             slice_prediction = tf.cast(tf.equal(self.predictions, i), tf.float32)
@@ -200,7 +218,7 @@ class UNet3D(object):
         self.dice_summary = tf.summary.scalar('dice', self.dice)
             
     def train(self, config):
-        #optimizer = tf.train.AdamOptimizer().minimize(self.loss)
+        #optimizer = AdamOptimizer().minimize(self.loss)
         print('train def')
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
@@ -216,37 +234,49 @@ class UNet3D(object):
         merged = tf.summary.merge([self.loss_summary, self.accuracy_summary, self.dice_summary])
                 
         counter = 0
+        train_loss_list = []
+        train_acc_list = []
+        train_dice_list = []
+       
         training_orders = [(n, l) for n in range(len(self.training_paths)) for l in range(self.patches_per_image)]
         print('channels and classes: {} {}'.format(self.channel,self.nclass))
         for epoch in range(config['epoch']):
             # Shuffle the orders
             epoch_training_orders = np.random.permutation(training_orders)
-            print('train epoch: {}'.format(epoch))
-            print('epoch train order len: {}'.format(range(len(epoch_training_orders))))
             # Go through all selected patches
-            for f in range(2): #(len(epoch_training_orders) // self.batch_size):
+            for f in range(len(epoch_training_orders) // self.batch_size):
                 print('train order: {}'.format(f))
                 patches = np.empty((self.batch_size, self.patch_size[0], self.patch_size[1], self.patch_size[2], self.channel),
                                    dtype=np.float32)
                 labels = np.empty((self.batch_size, self.patch_size[0], self.patch_size[1], self.patch_size[2], self.nclass),
                                   dtype=np.float32)
-                print('patches and labels: {} {}'.format(patches.shape, labels.shape))
-                print('tf patches and labels: {} {}'.format(tf.shape(self.images), tf.shape(self.labels)))
+                # print('patches and labels: {} {}'.format(patches.shape, labels.shape))
+                # print('tf patches and labels: {} {}'.format(tf.shape(self.images), tf.shape(self.labels)))
                 for b in range(self.batch_size):
                     order = epoch_training_orders[f * self.batch_size + b]
                     patches[b], labels[b] = read_patch(os.path.join(self.training_paths[order[0]], str(order[1])),self.nclass)
 
-                print('reordered patches and labels: {} {}'.format(patches.shape, labels.shape))
-                _, train_loss, summary = self.sess.run([optimizer, self.loss, merged],
+                # print('patch, label means: {}, {}'.format(np.mean(patches),np.mean(labels)))
+                # print('reordered patches and labels: {} {}'.format(patches.shape, labels.shape))
+                
+                # _,distance,preds,loss_value,acc_value=sess.run([optimizer,lsn.distance,lsn.preds,lsn.loss,lsn.accuracy], 
+                _, train_loss, train_acc, train_dice, summary = self.sess.run([optimizer, self.loss, self.accuracy, 
+                                                                               self.dice, merged],
                                                        feed_dict = { self.images: patches,
                                                                      self.labels: labels,
                                                                      self.is_training: True,
                                                                      self.keep_prob: self.dropout })
+                
+                train_loss_list.append(train_loss)
+                train_acc_list.append(train_acc)
+                train_dice_list.append(train_dice)
+                
+                # print('train forward pass complete')
                 train_writer.add_summary(summary, counter)
                 counter += 1
                 if np.mod(counter, 1000) == 0:
                     self.save(counter)
-                print('train forward pass complete')    
+                    
                 # # Run test
                 # if self.testing_paths is not None and np.mod(counter, 100) == 0:
                 #     for b in range(self.batch_size):
@@ -262,49 +292,57 @@ class UNet3D(object):
                     
         # Save in the end
         self.save(counter)
-       
-    # def deploy(self, input_path, output_path):
-    #     # Step 1
-    #     if not self.load()[0]:
-    #         raise Exception("No model is found, please train first") 
         
-    #     # Apply this to all subjects including the training cases
-    #     # Read from files.log and pick the testing cases for analysis
-    #     all_paths = []
-    #     for dirpath, dirnames, files in os.walk(input_path):
-    #         if os.path.basename(dirpath)[0:7] == 'Brats17':
-    #             all_paths.append(dirpath)
+        # Collect train metrics
+        train_metrics = {'loss':train_loss_list, 'acc':train_acc_list, 'dice':train_dice_list}
+        
+        return train_metrics
+       
+    def deploy(self, input_path, output_path):
+        # Step 1
+        if not self.load()[0]:
+            raise Exception("No model is found, please train first") 
+        
+        # Apply this to all subjects including the training cases
+        # Read from files.log and pick the testing cases for analysis
+        all_paths = []
+        # for dirpath, dirnames, files in os.walk(input_path):
+        #     if os.path.basename(dirpath)[0:7] == 'Brats17':
+        #         all_paths.append(dirpath)
+        subject_dirs = next(os.walk(input_path))[1]
+        for d in subject_dirs: 
+            all_paths.append(os.path.join(input_path,d))
                 
-    #     for path in all_paths:
-    #         image = read_image(path, is_training=False)
-    #         locations, padding = generate_test_locations(self.patch_size, self.patch_stride, image.shape[:-1])
-    #         pad_image = np.pad(image, padding + ((0, 0),), 'constant')
-    #         pad_result = np.zeros((pad_image.shape[:-1] + (self.nclass,)), dtype=np.float32)
-    #         pad_add = np.zeros((pad_image.shape[:-1]), dtype=np.float32)
-    #         for x in locations[0]:
-    #             for y in locations[1]:
-    #                 for z in locations[2]:
-    #                     patch = pad_image[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
-    #                                       int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
-    #                                       int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2), :]
+        for path in all_paths:
+            image = read_image(path, is_training=False)
+            locations, padding = generate_test_locations(self.patch_size, self.patch_stride, image.shape[:-1])
+            pad_image = np.pad(image, padding + ((0, 0),), 'constant')
+            pad_result = np.zeros((pad_image.shape[:-1] + (self.nclass,)), dtype=np.float32)
+            pad_add = np.zeros((pad_image.shape[:-1]), dtype=np.float32)
+            for x in locations[0]:
+                for y in locations[1]:
+                    for z in locations[2]:
+                        patch = pad_image[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
+                                          int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
+                                          int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2), :]
                         
-    #                     patch = np.expand_dims(patch, axis=0)
+                        patch = np.expand_dims(patch, axis=0)
                         
-    #                     probs = self.sess.run(self.probs, feed_dict = { self.images: patch,
-    #                                                                     self.is_training: True,
-    #                                                                     self.keep_prob: 1 })
-    #                     pad_result[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
-    #                                int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
-    #                                int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2), :] += probs[0]
-    #                     pad_add[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
-    #                             int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
-    #                             int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2)] += 1
-    #         pad_result = pad_result / np.tile(np.expand_dims(pad_add, axis=3), (1, 1, 1, pad_result.shape[-1]))
-    #         result = pad_result[padding[0][0] : padding[0][0] + image.shape[0],
-    #                             padding[1][0] : padding[1][0] + image.shape[1],
-    #                             padding[2][0] : padding[2][0] + image.shape[2], :]
-    #         print(path)
-    #         np.save(os.path.join(output_path, os.path.basename(path) + '_probs'), result)
+                        probs = self.sess.run(self.probs, feed_dict = { self.images: patch,
+                                                                        self.is_training: True,
+                                                                        self.keep_prob: 1 })
+                        pad_result[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
+                                   int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
+                                   int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2), :] += probs[0]
+                        pad_add[int(x - self.patch_size[0] / 2) : int(x + self.patch_size[0] / 2),
+                                int(y - self.patch_size[1] / 2) : int(y + self.patch_size[1] / 2),
+                                int(z - self.patch_size[2] / 2) : int(z + self.patch_size[2] / 2)] += 1
+            pad_result = pad_result / np.tile(np.expand_dims(pad_add, axis=3), (1, 1, 1, pad_result.shape[-1]))
+            result = pad_result[padding[0][0] : padding[0][0] + image.shape[0],
+                                padding[1][0] : padding[1][0] + image.shape[1],
+                                padding[2][0] : padding[2][0] + image.shape[2], :]
+            print(path)
+            np.save(os.path.join(output_path, os.path.basename(path) + '_probs'), result)
             
     def estimate_mean_std(self, training_orders):
         means = []
