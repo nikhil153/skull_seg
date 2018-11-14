@@ -48,11 +48,12 @@ def deconv3d(input_, output_shape, f_size, is_training, scope='deconv3d'):
         w = tf.get_variable('w', [f_size, f_size, f_size, output_dim, input_.get_shape()[-1]],
                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         deconv = tf.nn.conv3d_transpose(input_, w, output_shape, strides=[1, f_size, f_size, f_size, 1], padding='SAME')
-        # bn = tf.contrib.layers.batch_norm(deconv, is_training=is_training, scope='bn', decay=0.9,
-        #                                  variables_collections=['bn_collections'])
+        
         # bn = tf.contrib.layers.batch_norm(deconv, is_training=is_training, scope='bn', decay=0.9,
         #                                   zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        r = tf.nn.relu(deconv)
+        bn3 = tf.layers.batch_normalization(deconv, training=is_training)
+        r = tf.nn.relu(bn3)
+        
         return r
     
 def crop_and_concat(x1, x2):
