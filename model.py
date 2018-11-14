@@ -7,7 +7,10 @@ import pickle
 from utils import *
 
 def conv3d(input_, output_dim, f_size, is_training, scope='conv3d'):
-    print(scope)
+    # TODO
+    # add batch norm
+    # net = slim.fully_connected(X, net_arch['l{}'.format(l+1)],normalizer_fn=slim.batch_norm,scope='fc{}'.format(l))
+    
     with tf.variable_scope(scope) as scope:
         # VGG network uses two 3*3 conv layers to effectively increase receptive field
         w1 = tf.get_variable('w1', [f_size, f_size, f_size, input_.get_shape()[-1], output_dim],
@@ -15,26 +18,29 @@ def conv3d(input_, output_dim, f_size, is_training, scope='conv3d'):
         conv1 = tf.nn.conv3d(input_, w1, strides=[1, 1, 1, 1, 1], padding='SAME')
         b1 = tf.get_variable('b1', [output_dim], initializer=tf.constant_initializer(0.0))
         conv1 = tf.nn.bias_add(conv1, b1)
-        # bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
-        #                                   variables_collections=['bn_collections'])
-        # bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
-        #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        r1 = tf.nn.relu(conv1)
+        #bn1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, scope='bn1', decay=0.9,
+        #                                  variables_collections=['bn_collections'])
+        
+        # default TF layer no contrib
+        bn1 = tf.layers.batch_normalization(conv1, training=is_training)
+        r1 = tf.nn.relu(bn1)
         
         ## Comment starts here -------
-        # w2 = tf.get_variable('w2', [f_size, f_size, f_size, output_dim, output_dim],
-        #                      initializer=tf.truncated_normal_initializer(stddev=0.1))
-        # conv2 = tf.nn.conv3d(r1, w2, strides=[1, 1, 1, 1, 1], padding='SAME')
-        # b2 = tf.get_variable('b2', [output_dim], initializer=tf.constant_initializer(0.0))
-        # conv2 = tf.nn.bias_add(conv2, b2)
-        # bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
-        #                                    variables_collections=['bn_collections'])
+        w2 = tf.get_variable('w2', [f_size, f_size, f_size, output_dim, output_dim],
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
+        conv2 = tf.nn.conv3d(r1, w2, strides=[1, 1, 1, 1, 1], padding='SAME')
+        b2 = tf.get_variable('b2', [output_dim], initializer=tf.constant_initializer(0.0))
+        conv2 = tf.nn.bias_add(conv2, b2)
                                         
-        # # bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
-        # #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
-        # r2 = tf.nn.relu(bn2)
+        # bn2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, scope='bn2', decay=0.9,
+        #                                    zero_debias_moving_mean=True, variables_collections=['bn_collections'])
+        
+        # default TF layer no contrib
+        bn2 = tf.layers.batch_normalization(conv2, training=is_training)
+        r2 = tf.nn.relu(bn2)
         ## Comment ends here -------
-        return r1
+        
+        return r2
     
 def deconv3d(input_, output_shape, f_size, is_training, scope='deconv3d'):
     with tf.variable_scope(scope) as scope:
@@ -57,15 +63,15 @@ def crop_and_concat(x1, x2):
     x1_crop = tf.slice(x1, offsets, size)
     return tf.concat([x1_crop, x2], 4) #tf.concat(4, [x1_crop, x2]) #tf.concat([x1_crop, x2], 4) # order depends on TF version
 
-def conv_relu(input_, output_dim, f_size, s_size, scope='conv_relu'):
-    with tf.variable_scope(scope) as scope:
-        w = tf.get_variable('w', [f_size, f_size, f_size, input_.get_shape()[-1], output_dim],
-                            initializer=tf.truncated_normal_initializer(stddev=0.1))
-        conv = tf.nn.conv3d(input_, w, strides=[1, s_size, s_size, s_size, 1], padding='VALID')
-        b = tf.get_variable('b', [output_dim], initializer=tf.constant_initializer(0.0))
-        conv = tf.nn.bias_add(conv, b)
-        r = tf.nn.relu(conv)
-        return r
+# def conv_relu(input_, output_dim, f_size, s_size, scope='conv_relu'):
+#     with tf.variable_scope(scope) as scope:
+#         w = tf.get_variable('w', [f_size, f_size, f_size, input_.get_shape()[-1], output_dim],
+#                             initializer=tf.truncated_normal_initializer(stddev=0.1))
+#         conv = tf.nn.conv3d(input_, w, strides=[1, s_size, s_size, s_size, 1], padding='VALID')
+#         b = tf.get_variable('b', [output_dim], initializer=tf.constant_initializer(0.0))
+#         conv = tf.nn.bias_add(conv, b)
+#         r = tf.nn.relu(conv)
+#         return r
     
 class UNet3D(object):
     def __init__(self, sess, checkpoint_dir, log_dir, training_paths, testing_paths,
@@ -99,10 +105,6 @@ class UNet3D(object):
         self.saver = tf.train.Saver(tf.trainable_variables() + tf.get_collection_ref('bn_collections'))
         
     def build_model(self):
-        # TODO
-        # add batch norm
-        # net = slim.fully_connected(X, net_arch['l{}'.format(l+1)],normalizer_fn=slim.batch_norm,scope='fc{}'.format(l))
-        
         self.images = tf.placeholder(tf.float32, shape=[None, self.patch_size[0], self.patch_size[1], self.patch_size[2],
                                                         self.channel], name='images')
         self.labels = tf.placeholder(tf.float32, shape=[None, self.patch_size[0], self.patch_size[1], self.patch_size[2],
@@ -234,9 +236,15 @@ class UNet3D(object):
         merged = tf.summary.merge([self.loss_summary, self.accuracy_summary, self.dice_summary])
                 
         counter = 0
+        test_interval = 10
+        ckpt_interval = 1000
+        
         train_loss_list = []
         train_acc_list = []
         train_dice_list = []
+        test_loss_list = []
+        test_acc_list = []
+        test_dice_list = []
        
         training_orders = [(n, l) for n in range(len(self.training_paths)) for l in range(self.patches_per_image)]
         print('channels and classes: {} {}'.format(self.channel,self.nclass))
@@ -250,8 +258,7 @@ class UNet3D(object):
                                    dtype=np.float32)
                 labels = np.empty((self.batch_size, self.patch_size[0], self.patch_size[1], self.patch_size[2], self.nclass),
                                   dtype=np.float32)
-                # print('patches and labels: {} {}'.format(patches.shape, labels.shape))
-                # print('tf patches and labels: {} {}'.format(tf.shape(self.images), tf.shape(self.labels)))
+                
                 for b in range(self.batch_size):
                     order = epoch_training_orders[f * self.batch_size + b]
                     patches[b], labels[b] = read_patch(os.path.join(self.training_paths[order[0]], str(order[1])),self.nclass)
@@ -259,7 +266,6 @@ class UNet3D(object):
                 # print('patch, label means: {}, {}'.format(np.mean(patches),np.mean(labels)))
                 # print('reordered patches and labels: {} {}'.format(patches.shape, labels.shape))
                 
-                # _,distance,preds,loss_value,acc_value=sess.run([optimizer,lsn.distance,lsn.preds,lsn.loss,lsn.accuracy], 
                 _, train_loss, train_acc, train_dice, summary = self.sess.run([optimizer, self.loss, self.accuracy, 
                                                                                self.dice, merged],
                                                        feed_dict = { self.images: patches,
@@ -274,29 +280,38 @@ class UNet3D(object):
                 # print('train forward pass complete')
                 train_writer.add_summary(summary, counter)
                 counter += 1
-                if np.mod(counter, 1000) == 0:
+                if np.mod(counter, ckpt_interval) == 0:
                     self.save(counter)
                     
                 # # Run test
-                # if self.testing_paths is not None and np.mod(counter, 100) == 0:
-                #     for b in range(self.batch_size):
-                #         order = testing_orders[np.random.choice(len(testing_orders))]
-                #         patches[b], labels[b] = read_patch(os.path.join(self.testing_paths[order[0]], str(order[1])),self.nclass)
-                #     test_loss, summary = self.sess.run([self.loss, merged],
-                #                                        feed_dict = { self.images: patches,
-                #                                                      self.labels: labels,
-                #                                                      self.is_training: True,
-                #                                                      self.keep_prob: 1 })
-                #     print(str(counter) + ":" + "train_loss: " + str(train_loss) + " test_loss: " + str(test_loss))
-                #     test_writer.add_summary(summary, counter)
+                if self.testing_paths is not None and np.mod(counter, test_interval) == 0:
+                    for b in range(self.batch_size):
+                        order = testing_orders[np.random.choice(len(testing_orders))]
+                        patches[b], labels[b] = read_patch(os.path.join(self.testing_paths[order[0]], str(order[1])),self.nclass)
+                    
+                    test_loss, test_acc, test_dice, summary = self.sess.run([self.loss, self.accuracy, self.dice, merged],
+                                                       feed_dict = { self.images: patches,
+                                                                     self.labels: labels,
+                                                                     self.is_training: True,
+                                                                     self.keep_prob: 1 })
+                    
+                    print(str(counter) + ":" + "train_loss: " + str(train_loss) + " test_loss: " + str(test_loss))
+                    print(str(counter) + ":" + "train_acc: " + str(train_acc) + " test_acc: " + str(test_acc))
+                    print(str(counter) + ":" + "train_dice: " + str(train_dice) + " test_dice: " + str(test_dice))
+                    
+                    test_loss_list.append(test_loss)
+                    test_acc_list.append(test_acc)
+                    test_dice_list.append(test_dice)
+                    test_writer.add_summary(summary, counter)
                     
         # Save in the end
         self.save(counter)
         
         # Collect train metrics
         train_metrics = {'loss':train_loss_list, 'acc':train_acc_list, 'dice':train_dice_list}
+        test_metrics = {'loss':test_loss_list, 'acc':test_acc_list, 'dice':test_dice_list}
         
-        return train_metrics
+        return train_metrics,test_metrics
        
     def deploy(self, input_path, output_path):
         # Step 1
