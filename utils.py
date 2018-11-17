@@ -3,16 +3,16 @@ import os, glob
 import numpy as np
 import h5py
 from skimage.transform import resize, warp
-from transforms3d.euler import euler2mat
-from transforms3d.affines import compose
+# from transforms3d.euler import euler2mat
+# from transforms3d.affines import compose
 import nibabel as nib
 
-def get_random_transformation():
-    T = [0, np.random.uniform(-8, 8), np.random.uniform(-8, 8)]
-    R = euler2mat(np.random.uniform(-5, 5) / 180.0 * np.pi, 0, 0, 'sxyz')
-    Z = [1, np.random.uniform(0.9, 1.1), np.random.uniform(0.9, 1.1)]
-    A = compose(T, R, Z)
-    return A
+# def get_random_transformation():
+#     T = [0, np.random.uniform(-8, 8), np.random.uniform(-8, 8)]
+#     R = euler2mat(np.random.uniform(-5, 5) / 180.0 * np.pi, 0, 0, 'sxyz')
+#     Z = [1, np.random.uniform(0.9, 1.1), np.random.uniform(0.9, 1.1)]
+#     A = compose(T, R, Z)
+#     return A
 
 def get_tform_coords(im_size):
     coords0, coords1, coords2 = np.mgrid[:im_size[0], :im_size[1], :im_size[2]]
@@ -38,55 +38,56 @@ def normalize(im_input):
     im_output = (im_input - np.mean(roi)) / np.std(roi)
     return im_output
 
-def read_label(path, is_training=True):
-    seg = nib.load(glob.glob(os.path.join(path, '*_seg.nii.gz'))[0]).get_data().astype(np.float32)
-    # Crop to 128*128*64
-    crop_size = (128, 128, 64)
-    crop = [int((seg.shape[0] - crop_size[0]) / 2), int((seg.shape[1] - crop_size[1]) / 2),
-            int((seg.shape[2] - crop_size[2]) / 2)]
-    seg = seg[crop[0] : crop[0] + crop_size[0], crop[1] : crop[1] + crop_size[1], crop[2] : crop[2] + crop_size[2]]
-    label = np.zeros((seg.shape[0], seg.shape[1], seg.shape[2], 3), dtype=np.float32)
-    label[seg == 1, 0] = 1
-    label[seg == 2, 1] = 1
-    label[seg == 4, 2] = 1
+# def read_label(path, is_training=True):
+#     seg = nib.load(glob.glob(os.path.join(path, 'skull_*_flip_seg.nii.gz'))[0]).get_data().astype(np.float32)
+#     # Crop to 128*128*64
+#     crop_size = (128, 128, 64)
+#     crop = [int((seg.shape[0] - crop_size[0]) / 2), int((seg.shape[1] - crop_size[1]) / 2),
+#             int((seg.shape[2] - crop_size[2]) / 2)]
+#     seg = seg[crop[0] : crop[0] + crop_size[0], crop[1] : crop[1] + crop_size[1], crop[2] : crop[2] + crop_size[2]]
+#     label = np.zeros((seg.shape[0], seg.shape[1], seg.shape[2], 3), dtype=np.float32)
+#     label[seg == 1, 0] = 1
+#     label[seg == 2, 1] = 1
+#     label[seg == 4, 2] = 1
     
-    print('label shape: '.format(label.shape))
-    final_label = np.empty((16, 16, 16, 3), dtype=np.float32)
-    for z in range(label.shape[3]):
-        final_label[..., z] = resize(label[..., z], (16, 16, 16), mode='constant')
+#     print('label shape: '.format(label.shape))
+#     final_label = np.empty((16, 16, 16, 3), dtype=np.float32)
+#     for z in range(label.shape[3]):
+#         final_label[..., z] = resize(label[..., z], (16, 16, 16), mode='constant')
         
-    print('final label shape: '.format(final_label.shape))
-    # Augmentation
-    if is_training:
-        im_size = final_label.shape[:-1]
-        translation = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), np.random.uniform(-2, 2)]
-        rotation = euler2mat(0, 0, np.random.uniform(-5, 5) / 180.0 * np.pi, 'sxyz')
-        scale = [1, 1, 1]
-        warp_mat = compose(translation, rotation, scale)
-        tform_coords = get_tform_coords(im_size)
-        w = np.dot(warp_mat, tform_coords)
-        w[0] = w[0] + im_size[0] / 2
-        w[1] = w[1] + im_size[1] / 2
-        w[2] = w[2] + im_size[2] / 2
-        warp_coords = w[0:3].reshape(3, im_size[0], im_size[1], im_size[2])
-        for z in range(label.shape[3]):
-            final_label[..., z] = warp(final_label[..., z], warp_coords)
+#     print('final label shape: '.format(final_label.shape))
+#     # Augmentation
+#     if is_training:
+#         im_size = final_label.shape[:-1]
+#         translation = [np.random.uniform(-2, 2), np.random.uniform(-2, 2), np.random.uniform(-2, 2)]
+#         rotation = euler2mat(0, 0, np.random.uniform(-5, 5) / 180.0 * np.pi, 'sxyz')
+#         scale = [1, 1, 1]
+#         warp_mat = compose(translation, rotation, scale)
+#         tform_coords = get_tform_coords(im_size)
+#         w = np.dot(warp_mat, tform_coords)
+#         w[0] = w[0] + im_size[0] / 2
+#         w[1] = w[1] + im_size[1] / 2
+#         w[2] = w[2] + im_size[2] / 2
+#         warp_coords = w[0:3].reshape(3, im_size[0], im_size[1], im_size[2])
+#         for z in range(label.shape[3]):
+#             final_label[..., z] = warp(final_label[..., z], warp_coords)
 
-    print('final aug label shape: '.format(final_label.shape))
-    return final_label
+#     print('final aug label shape: '.format(final_label.shape))
+#     return final_label
 
 def read_seg(path):
-    seg = nib.load(glob.glob(os.path.join(path, '*_seg.nii.gz'))[0]).get_data().astype(np.float32)
+    seg = nib.load(glob.glob(os.path.join(path, 'skull_*_flip_seg.nii.gz'))[0]).get_data().astype(np.float32)
     return seg
 
 def read_image(path, is_training=True):
-    t1 = nib.load(glob.glob(os.path.join(path, '*_img.nii.gz'))[0]).get_data().astype(np.float32)
+    #t1 = nib.load(glob.glob(os.path.join(path, '*_img.nii.gz'))[0]).get_data().astype(np.float32)
+    t1 = nib.load(glob.glob(os.path.join(path, 't1w_*_flip_masked.nii.gz'))[0]).get_data().astype(np.float32)
     # t1ce = nib.load(glob.glob(os.path.join(path, '*_t1ce_corrected.nii.gz'))[0]).get_data().astype(np.float32)
     # t2 = nib.load(glob.glob(os.path.join(path, '*_t2.nii.gz'))[0]).get_data().astype(np.float32)
     # flair = nib.load(glob.glob(os.path.join(path, '*_flair.nii.gz'))[0]).get_data().astype(np.float32)
     # assert t1.shape == t1ce.shape == t2.shape == flair.shape
     if is_training:
-        seg = nib.load(glob.glob(os.path.join(path, '*_seg.nii.gz'))[0]).get_data().astype(np.float32)
+        seg = nib.load(glob.glob(os.path.join(path, 'skull_*_flip_seg.nii.gz'))[0]).get_data().astype(np.float32)
         assert t1.shape == seg.shape
         print('unique labels')
         print(len(np.unique(seg)))
