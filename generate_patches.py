@@ -10,7 +10,7 @@ def batch_works(k):
     else:
         paths = all_paths[k * int(len(all_paths) / n_processes) : (k + 1) * int(len(all_paths) / n_processes)]
     
-    #print(paths)
+    print(paths)
     for path in paths:
         o_path = os.path.join(output_path, os.path.basename(path))
         
@@ -43,8 +43,8 @@ if __name__ == '__main__':
         os.makedirs(output_path)
     
     # Some variables
-    patches_per_image = 400
-    patch_size = 64
+    patches_per_image = 800
+    patch_size = 32
     #image_size = (240, 240, 155)
     image_size = (193, 229, 193)
 

@@ -158,11 +158,11 @@ class UNet3D(object):
             deconv = deconv3d(prev, deconv_output_shape, deconv_size, is_training=self.is_training,
                               scope='decoding_dconv' + str(conterpart_layer))
            
-            # cc = crop_and_concat(connection_outputs[conterpart_layer], deconv)
-            # conv_decoding = conv3d(cc, features, conv_size, is_training=self.is_training,
-            #                        scope='decoding' + str(conterpart_layer))
-            conv_decoding = conv3d(deconv, features, conv_size, is_training=self.is_training,
-                                   scope='decoding_conv' + str(conterpart_layer))
+            cc = crop_and_concat(connection_outputs[conterpart_layer], deconv)
+            conv_decoding = conv3d(cc, features, conv_size, is_training=self.is_training,
+                                   scope='decoding' + str(conterpart_layer))
+#             conv_decoding = conv3d(deconv, features, conv_size, is_training=self.is_training,
+#                                    scope='decoding_conv' + str(conterpart_layer))
 
         # print('conv_decoding shape: {}'.format(conv_decoding.get_shape()))    
         with tf.variable_scope('logits') as scope:
@@ -183,6 +183,7 @@ class UNet3D(object):
         flat_labels = tf.reshape(self.labels, [-1, self.nclass])
 
         if self.class_weights is not None:
+            print('Using class weights: {}'.format(self.class_weights))
             class_weights = tf.constant(np.asarray(self.class_weights, dtype=np.float32))
             weight_map = tf.reduce_max(tf.multiply(flat_labels, class_weights), axis=1)
             loss_map = tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits, labels=flat_labels)

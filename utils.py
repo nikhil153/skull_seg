@@ -76,18 +76,18 @@ def normalize(im_input):
 #     return final_label
 
 def read_seg(path):
-    seg = nib.load(glob.glob(os.path.join(path, 'skull_*_flip_seg.nii.gz'))[0]).get_data().astype(np.float32)
+    seg = nib.load(glob.glob(os.path.join(path, 'skull_*_seg.nii.gz'))[0]).get_data().astype(np.float32)
     return seg
 
 def read_image(path, is_training=True):
     #t1 = nib.load(glob.glob(os.path.join(path, '*_img.nii.gz'))[0]).get_data().astype(np.float32)
-    t1 = nib.load(glob.glob(os.path.join(path, 't1w_*_flip_masked.nii.gz'))[0]).get_data().astype(np.float32)
+    t1 = nib.load(glob.glob(os.path.join(path, 't1w_*_masked.nii.gz'))[0]).get_data().astype(np.float32)
     # t1ce = nib.load(glob.glob(os.path.join(path, '*_t1ce_corrected.nii.gz'))[0]).get_data().astype(np.float32)
     # t2 = nib.load(glob.glob(os.path.join(path, '*_t2.nii.gz'))[0]).get_data().astype(np.float32)
     # flair = nib.load(glob.glob(os.path.join(path, '*_flair.nii.gz'))[0]).get_data().astype(np.float32)
     # assert t1.shape == t1ce.shape == t2.shape == flair.shape
     if is_training:
-        seg = nib.load(glob.glob(os.path.join(path, 'skull_*_flip_seg.nii.gz'))[0]).get_data().astype(np.float32)
+        seg = nib.load(glob.glob(os.path.join(path, 'skull_*_seg.nii.gz'))[0]).get_data().astype(np.float32)
         assert t1.shape == seg.shape
         print('unique labels')
         print(len(np.unique(seg)))
