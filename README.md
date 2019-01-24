@@ -1,7 +1,7 @@
 # Objective
 - Segment skull from MR images using u-net models from brats2017 challenges
 
-# Basic workflow
+# Basic workflow (see ./Skull_segmentation_workflow.jpg)
 - Input: Nifti MR images and labels
 - preproc (for computational feasibility) 
   - Use a dilated average skull segmentations (or other brain extraction methods) to remove most of the brain form the images
