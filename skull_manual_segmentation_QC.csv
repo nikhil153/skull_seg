@@ -1,0 +1,41 @@
+filename,"QC (pass:1, fail:0)",comments
+skull_04_flip.mnc,1,
+skull_04.mnc,1,
+skull_05_flip.mnc,1,
+skull_05.mnc,1,
+skull_06_flip.mnc,0,near the ears and top of the head
+skull_06.mnc,0,near the ears and top of the head
+skull_18_flip.mnc,0,multiple double rims and object on the side
+skull_18.mnc,0,multiple double rims and object on the side
+skull_20_flip.mnc,1,
+skull_20.mnc,1,
+skull_38_flip.mnc,1,
+skull_38.mnc,1,
+skull_41_flip.mnc,0,CSF marked as bone in temporal lobe and object on the side
+skull_41.mnc,0,CSF marked as bone in temporal lobe and object on the side
+skull_42_flip.mnc,1,
+skull_42.mnc,1,
+skull_43_flip.mnc,1,
+skull_43.mnc,1,
+skull_44_flip.mnc,0,CSF marked as bone in temporal lobe
+skull_44.mnc,0,CSF marked as bone in temporal lobe
+skull_45_flip.mnc,1,
+skull_45.mnc,1,
+skull_46_flip.mnc,1,
+skull_46.mnc,1,
+skull_47_flip.mnc,0,CSF marked as bone in temporal lobe
+skull_47.mnc,0,CSF marked as bone in temporal lobe
+skull_48_flip.mnc,0,CSF marked as bone in temporal lobe
+skull_48.mnc,0,CSF marked as bone in temporal lobe
+skull_49_flip.mnc,0,CSF marked as bone at many temporal and frontal regions in sprase manner.. second ring outside scalp
+skull_49.mnc,0,CSF marked as bone at many temporal and frontal regions in sprase manner.. second ring outside scalp
+skull_50_flip.mnc,1,
+skull_50.mnc,1,
+skull_51_flip.mnc,0,CSF marked as bone and non-contiguous skull regions
+skull_51.mnc,0,CSF marked as bone and non-contiguous skull regions
+skull_52_flip.mnc,1,
+skull_52.mnc,1,
+skull_53_flip.mnc,0,skull on outerlining of the scalp
+skull_53.mnc,0,skull on outerlining of the scalp
+skull_54_flip.mnc,0,skull on outerlining of the scalp and some object on top and discontinuities
+skull_54.mnc,0,skull on outerlining of the scalp and some object on top and discontinuities
